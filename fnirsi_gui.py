@@ -335,7 +335,7 @@ def _power_icon(color='white'):
     pm = QPixmap(64, 64); pm.fill(Qt.transparent)
     p = QPainter(pm); p.setRenderHint(QPainter.Antialiasing)
     p.setPen(QPen(QColor(color), 5, Qt.SolidLine, Qt.RoundCap))
-    p.drawArc(17, 19, 30, 30, 50 * 16, 260 * 16)
+    p.drawArc(17, 19, 30, 30, 140 * 16, 260 * 16)
     p.drawLine(32, 11, 32, 33)
     p.end()
     return QIcon(pm)
