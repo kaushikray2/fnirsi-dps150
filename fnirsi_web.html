@@ -280,16 +280,21 @@ async function readAscii(reg) {
 }
 async function readAll() {
   const data = await readReg(REG.ALL, 2500);
-  if (data.length < 119) throw new Error('short dump: ' + data.length);
+  if (data.length < 110) throw new Error('short dump: ' + data.length);
   const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const st = S.st;
-  st.input_v = rdF32(dv, 0); st.set_v = rdF32(dv, 4); st.set_a = rdF32(dv, 8);
-  st.out_v = rdF32(dv, 12); st.out_a = rdF32(dv, 16); st.out_w = rdF32(dv, 20);
-  st.temp_c = rdF32(dv, 24);
-  st.brightness = data[96]; st.volume = data[97]; st.metering = data[98];
-  st.ah = rdF32(dv, 99); st.wh = rdF32(dv, 103);
-  st.output_on = data[107] !== 0; st.protection = data[108]; st.mode = data[109];
-  st.max_v = rdF32(dv, 111); st.max_a = rdF32(dv, 115);
+  st.set_v = rdF32(dv, 4); st.set_a = rdF32(dv, 8);
+  if (data.length >= 28) {
+    st.input_v = rdF32(dv, 0);
+    st.out_v = rdF32(dv, 12); st.out_a = rdF32(dv, 16); st.out_w = rdF32(dv, 20);
+    st.temp_c = rdF32(dv, 24);
+  }
+  if (data.length >= 119) {
+    st.brightness = data[96]; st.volume = data[97]; st.metering = data[98];
+    st.ah = rdF32(dv, 99); st.wh = rdF32(dv, 103);
+    st.output_on = data[107] !== 0; st.protection = data[108]; st.mode = data[109];
+    st.max_v = rdF32(dv, 111); st.max_a = rdF32(dv, 115);
+  }
   return data;
 }
 function onFrame(reg, data) {
@@ -344,6 +349,10 @@ async function connect() {
   try { S.identity.model = await readAscii(REG.MODEL); } catch (e) {}
   try { S.identity.hardware = await readAscii(REG.HW); } catch (e) {}
   try { S.identity.firmware = await readAscii(REG.FW); } catch (e) {}
+  for (const [reg, fn] of [[REG.OUTPUT, d => { S.st.output_on = d[0] !== 0; }], [REG.PROTECTION, d => { S.st.protection = d[0]; }], [REG.MODE, d => { S.st.mode = d[0]; }], [REG.AH, d => { S.st.ah = rdF32(new DataView(d.buffer, d.byteOffset, d.byteLength), 0); }], [REG.WH, d => { S.st.wh = rdF32(new DataView(d.buffer, d.byteOffset, d.byteLength), 0); }]]) {
+    try { fn(await readReg(reg)); } catch (e) {}
+  }
+  syncFromDevice();
   $('dPort').textContent = 'COM/USB (Web Serial)';
   $('hdrStatus').textContent = '\u25CF Connected - ' + S.identity.model + ' \u00B7 FW ' + S.identity.firmware;
   $('hdrStatus').classList.add('on');
