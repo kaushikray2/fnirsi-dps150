@@ -75,6 +75,7 @@
   <div class="warnbar" id="noSerial">Web Serial is not available in this browser - use Chrome or Edge.</div>
   <button id="btnConnect">Connect</button>
 </header>
+<div id="errLine" style="display:none;background:#3a1414;border:1px solid #ef4444;color:#fca5a5;border-radius:6px;padding:7px 10px;margin-bottom:10px;font-weight:600"></div>
 <div class="tabs">
   <button id="tabBasic" class="active">Basic</button>
   <button id="tabAdv">Advanced</button>
@@ -246,7 +247,7 @@ const S = { port:null, reader:null, writer:null, connected:false, buf:new Uint8A
   st:{ input_v:0, set_v:0, set_a:0, out_v:0, out_a:0, out_w:0, temp_c:0, ah:0, wh:0,
        metering:0, brightness:0, volume:0, output_on:false, protection:0, mode:1,
        max_v:30.0, max_a:5.1 }, identity:{model:'--', hardware:'--', firmware:'--'},
-  locked:false, samples:[], chartPaused:false, runActive:false };
+  locked:false, samples:[], chartPaused:false, runActive:false, gen:0 };
 
 function frame(cmd, reg, data) {
   const out = new Uint8Array(5 + data.length);
@@ -327,17 +328,53 @@ function parseLoop(chunk) {
   }
   S.buf = buf.slice(i);
 }
+function showError(msg) { const el = $('errLine'); el.textContent = msg; el.style.display = 'block'; }
+function clearError() { $('errLine').style.display = 'none'; }
+async function readerLoop(gen) {
+  let failures = 0;
+  while (S.connected && gen === S.gen) {
+    try {
+      const { value, done } = await S.reader.read();
+      if (done) break;
+      if (value && value.length) { parseLoop(value); failures = 0; }
+    } catch (e) {
+      if (!S.connected || gen !== S.gen) return;
+      failures++;
+      showError('Serial read error: ' + e.message);
+      if (failures > 3) { log('Serial reader stopped after repeated errors - use Disconnect, then Connect again.'); return; }
+      try { S.reader.releaseLock(); } catch (_) {}
+      await sleep(600);
+      if (!S.connected || gen !== S.gen) return;
+      try {
+        if (!S.port.readable) {
+          try { await S.port.close(); } catch (_) {}
+          await S.port.open({ baudRate: 115200 });
+          try { S.writer.releaseLock(); } catch (_) {}
+          S.writer = S.port.writable.getWriter();
+        }
+        S.reader = S.port.readable.getReader();
+        log('Serial reader recovered (attempt ' + failures + ') - resyncing with the device.');
+        readAll().then(() => syncFromDevice()).catch(() => {});
+      } catch (e2) { showError('Serial recovery failed: ' + e2.message); }
+    }
+  }
+}
+
 /* ---------- connection lifecycle ---------- */
 async function connect() {
   if (!('serial' in navigator)) { log('Web Serial not available - open this page in Chrome or Edge.'); return; }
   try {
     S.port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x2e3c, usbProductId: 0x5740 }] });
   } catch (e) { log('No device selected.'); return; }
-  await S.port.open({ baudRate: 115200 });
-  S.writer = S.port.writable.getWriter();
-  S.reader = S.port.readable.getReader();
+  clearError();
+  S.gen++; const gen = S.gen;
+  try {
+    await S.port.open({ baudRate: 115200 });
+    S.writer = S.port.writable.getWriter();
+    S.reader = S.port.readable.getReader();
+  } catch (e) { showError('Could not open the serial port: ' + e.message); S.port = null; return; }
   S.connected = true;
-  (async () => { while (S.connected) { try { const { value, done } = await S.reader.read(); if (done) break; if (value) parseLoop(value); } catch (e) { if (S.connected) log('Serial read error: ' + e.message); break; } } })();
+  readerLoop(gen);
   await sleep(500);
   await sendFrame(CMD_SESSION, 0x00, new Uint8Array([1]));
   await sendFrame(CMD_BAUD, 0x00, new Uint8Array([5]));
@@ -358,9 +395,11 @@ async function connect() {
   $('hdrStatus').classList.add('on');
   $('btnConnect').textContent = 'Disconnect';
   syncFromDevice();
+  if (!firstRead) showError('Connected, but the initial read failed - no answer from the device. Live values will populate from the stream if it is flowing.');
   log(firstRead ? ('Connected to ' + S.identity.model + ' (HW ' + S.identity.hardware + ', FW ' + S.identity.firmware + '). Read back: setpoints ' + S.st.set_v.toFixed(2) + ' V / ' + S.st.set_a.toFixed(2) + ' A, output ' + (S.st.output_on ? 'ON' : 'OFF') + ', input ' + S.st.input_v.toFixed(2) + ' V.') : 'Connected, but the initial read failed - live values will populate from the device stream.');
 }
 async function disconnect() {
+  S.gen++;
   try { await sendFrame(CMD_SESSION, 0x00, new Uint8Array([0])); } catch (e) {}
   S.connected = false;
   try { await S.reader.cancel(); } catch (e) {}
