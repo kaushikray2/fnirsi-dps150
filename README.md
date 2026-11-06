@@ -1,33 +1,42 @@
 # FNIRSI DPS-150 — USB control library + GUI
 
 Python control for the FNIRSI DPS-150 programmable DC supply over its USB
-virtual COM port. Written for the bench unit on the zorinbox
-(model `DPS-150`, HW V1.0, FW V1.2). Protocol reverse-engineered from three
-open-source implementations and **verified end-to-end on the physical unit
-on 2026-11-06** (see `probe/`).
+virtual COM port. Protocol reverse-engineered from open-source
+implementations and **verified end-to-end on a physical unit
+(model `DPS-150`, HW V1.0, FW V1.2)**. Works on Linux and Windows.
+
+## ⚠ Warning — use at your own risk
+
+This software drives a real power supply that can deliver up to
+30 V / 5 A / 150 W. A wrong setpoint, a bug, or a misunderstanding can
+destroy connected equipment, start a fire, or injure you. Check the
+setpoints before you connect a load, and never leave a powered setup
+unattended.
+
+**This software is provided as-is, with no warranty of any kind. You use
+it entirely at your own risk, and the author takes no responsibility for
+any damage, loss, or injury of any kind resulting from its use.**
 
 ## Files
 - `fnirsi.py` — control library + CLI (`FnirsiDPS150`).
-- `fnirsi_gui.py` — PySide6 desktop GUI v2 built on the library (v1 kept as
-  `fnirsi_gui.py.bak-2026-11-06`). Dark instrument theme modelled on the
+- `fnirsi_gui.py` — PySide6 desktop GUI built on the library. Dark
+  instrument theme modelled on the
   official FNIRSI app's layout. **Basic tab:** live dual-axis V/I trend chart
   (from the 2 Hz stream), arc gauges vs the live ceiling with setpoint ticks,
-  setpoints, preset Groups 1-6 (+ store mode), Ah/Wh measurement + metering
-  state, brightness slider (written to the device and read-back-verified via
+  setpoints with a Lock button that disables Apply, four fixed presets (3.3 V/1 A, 3.3 V/5 A, 5 V/1 A, 5 V/3 A) behind a warning confirmation, Ah/Wh measurement + metering
+  state, brightness slider, range 0-15 (written to the device and read-back-verified via
   the dump @96), a device panel, and a Basic information panel matching the official app:
   boxed readouts (input V, output V/A, power, system temp), green Normal and
-  blue Constant lamps, and a square power button that names its action -
-  green **Open** while the output is off, red **Close** while it is live.
+  blue Constant lamps, and a square power button that shows the output
+  state - **On** with a green power symbol while the output is live,
+  **Off** with a red one while it is off.
   **Advanced tab:** voltage scan and current scan (fixed other-axis value,
   start/stop/step/delay) and a sequence table (per-step V/I/delay, row range,
   cycles, Auto or Manual mode stepped with Continue, Pause/Stop, per-row
   status). Runs execute on a worker thread; on finish, stop or error they
   restore the setpoints and output state from before the run.
-- `probe/` — the verification probes/tests used to prove the protocol
-  (`probe1.py` register survey, `probe2.py` streaming + ramp characterisation,
-  `test_library.py`, `gui_test.py`).
-- `fnirsi.py.bak-2026-11-06` — the earlier IPS3608-based attempt (9600 baud,
-  36 V/8.2 A limits) kept for reference; do not use it for the DPS-150.
+- `probe/gui_test2.py` — the headless GUI regression suite (connect,
+  brightness, scans, sequences, info panel) run under `xvfb-run`.
 
 ## Quick start
 ```bash
@@ -38,6 +47,10 @@ python3 fnirsi.py on          # enable output
 python3 fnirsi.py off
 python3 fnirsi_gui.py         # GUI (auto-connects; never auto-enables output)
 ```
+Windows: double-click `run_gui.bat` (installs the dependencies from
+`requirements.txt` and launches the GUI), or do the same commands with
+`python` instead of `python3`. The supply is found automatically by its
+USB ID, whichever COM port Windows assigns it.
 Library:
 ```python
 from fnirsi import FnirsiDPS150
@@ -63,4 +76,8 @@ with FnirsiDPS150() as psu:            # auto-detects the port
   protection limits 0xD1-0xD5, brightness 0xD6, Ah 0xD9, Wh 0xDA,
   protection 0xDC, mode 0xDD, model 0xDE, firmware 0xE0, dump 0xFF).
 
+## License
 
+Beerware — see [LICENSE](LICENSE). Use this for anything you want,
+free of charge; the only condition is keeping the license notice. If we
+ever meet and you found this useful, you can buy me a beer in return.
