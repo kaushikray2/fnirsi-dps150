@@ -76,6 +76,12 @@ with FnirsiDPS150() as psu:            # auto-detects the port
   protection limits 0xD1-0xD5, brightness 0xD6, Ah 0xD9, Wh 0xDA,
   protection 0xDC, mode 0xDD, model 0xDE, firmware 0xE0, dump 0xFF).
 
+## Donate
+
+This is free (see the Beerware license below). If it saved you time or a
+fried board, you can buy me a beer through PayPal:
+**[paypal.me/kaushikray1](https://paypal.me/kaushikray1)**
+
 ## License
 
 Beerware — see [LICENSE](LICENSE). Use this for anything you want,
