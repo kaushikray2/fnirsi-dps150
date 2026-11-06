@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FNIRSI DPS-150 - Power Supply</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:#0b0f14; color:#d7e6ee; font-family:"Segoe UI", system-ui, sans-serif; font-size:14px; padding:10px 12px; }
+  header { display:flex; align-items:center; gap:14px; margin-bottom:8px; }
+  header .title { color:#38bdf8; font-size:22px; font-weight:700; letter-spacing:.5px; }
+  header .status { color:#e05252; font-weight:600; }
+  header .status.on { color:#4ade80; }
+  header .spacer { flex:1; }
+  button { background:#12242f; color:#d7e6ee; border:1px solid #24506a; border-radius:6px; padding:6px 14px; font-size:14px; cursor:pointer; }
+  button:hover:not(:disabled) { background:#1a3446; }
+  button:disabled { opacity:.45; cursor:default; }
+  button.accent { background:#0e4d6e; border-color:#38bdf8; }
+  .tabs { display:flex; gap:4px; margin-bottom:10px; }
+  .tabs button { border-radius:6px 6px 0 0; padding:7px 22px; }
+  .tabs button.active { background:#0e4d6e; border-color:#38bdf8; color:#fff; }
+  .grid { display:grid; grid-template-columns: 1.55fr 1fr 1fr; gap:10px; }
+  .col { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  fieldset { border:1px solid #1d3a4a; border-radius:8px; padding:10px 12px 12px; background:#0d141c; }
+  legend { color:#6cb4d6; padding:0 5px; font-size:13px; }
+  .row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+  .row label { min-width:64px; color:#a9c3d0; }
+  input[type=number], input[type=text] { background:#0a1219; color:#fff; border:1px solid #24506a; border-radius:5px; padding:6px 8px; font-size:15px; width:110px; }
+  input[type=number]:focus, input[type=text]:focus { outline:1px solid #38bdf8; }
+  .kv { display:flex; justify-content:space-between; padding:3px 2px; border-bottom:1px solid #12222d; }
+  .kv span:first-child { color:#7d94a3; }
+  .kv span:last-child { font-weight:600; }
+  .boxes { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .box { background:#0a1219; border:1px solid #24506a; border-radius:6px; padding:7px 4px; text-align:center; }
+  .box .cap { color:#7d94a3; font-size:11px; margin-bottom:3px; }
+  .box .val { font-size:17px; font-weight:700; }
+  .lamps { display:flex; gap:10px; align-items:stretch; margin-top:10px; }
+  .lamp { flex:1; text-align:center; background:#0a1219; border-radius:6px; padding:10px 0 7px; }
+  .lamp .dot { width:34px; height:34px; border-radius:50%; margin:0 auto 6px; background:#23404f; }
+  .lamp .dot.g { background:#22c55e; } .lamp .dot.b { background:#38bdf8; } .lamp .dot.r { background:#ef4444; }
+  #btnPower { flex:1.2; min-height:96px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:#16202b; border-radius:8px; font-weight:700; font-size:15px; }
+  #btnPower.on { border:1px solid #22c55e; } #btnPower.off { border:1px solid #ef4444; }
+  .presets { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .note { color:#7d94a3; font-size:12px; margin-top:7px; }
+  #btnLock.locked { background:#7f1d1d; border-color:#ef4444; color:#fff; font-weight:700; }
+  .gaugeWrap { position:relative; width:49%; display:inline-block; vertical-align:top; }
+  .gaugeWrap canvas { width:100%; }
+  .gaugeTxt { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; pointer-events:none; }
+  .gaugeTxt .big { font-size:34px; font-weight:700; }
+  .gaugeTxt .unit { color:#38bdf8; font-size:13px; }
+  .gaugeTxt .sub { color:#7d94a3; font-size:12px; line-height:1.5; }
+  #chart { width:100%; height:210px; display:block; }
+  input[type=range] { flex:1; accent-color:#38bdf8; }
+  table.seq { width:100%; border-collapse:collapse; }
+  table.seq th { color:#6cb4d6; font-weight:600; padding:4px; text-align:left; font-size:13px; }
+  table.seq td { padding:2px 4px; }
+  table.seq input { width:90px; }
+  table.seq td.st { color:#7d94a3; font-size:13px; }
+  table.seq tr.running td.st { color:#4ade80; font-weight:700; }
+  footer { margin-top:10px; color:#a9c3d0; font-size:13px; min-height:18px; }
+  .modalWrap { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:10; }
+  .modal { background:#0e1720; border:1px solid #b45309; border-radius:10px; padding:20px 22px; width:380px; }
+  .modal h3 { color:#fbbf24; margin-bottom:10px; font-size:16px; }
+  .modal p { color:#d7e6ee; line-height:1.5; margin-bottom:16px; }
+  .modal .btns { display:flex; justify-content:flex-end; gap:8px; }
+  .hidden { display:none !important; }
+  .warnbar { background:#3a2a10; border:1px solid #b45309; color:#fbbf24; border-radius:6px; padding:6px 10px; margin-bottom:10px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">FNIRSI&nbsp; DPS-150</div>
+  <div class="status" id="hdrStatus">&#9679; Disconnected</div>
+  <div class="spacer"></div>
+  <div class="warnbar" id="noSerial">Web Serial is not available in this browser - use Chrome or Edge.</div>
+  <button id="btnConnect">Connect</button>
+</header>
+<div class="tabs">
+  <button id="tabBasic" class="active">Basic</button>
+  <button id="tabAdv">Advanced</button>
+</div>
+
+<div id="pageBasic" class="grid">
+  <div class="col">
+    <fieldset>
+      <legend>Output trend</legend>
+      <div class="row">
+        <button id="btnPauseChart">Pause</button>
+        <button id="btnClearChart">Clear</button>
+        <label style="min-width:0"><input type="checkbox" id="chkV" checked> Output Voltage</label>
+        <label style="min-width:0"><input type="checkbox" id="chkI" checked> Output Current</label>
+      </div>
+      <canvas id="chart" width="640" height="210"></canvas>
+      <div class="note">sample count &#8594;</div>
+    </fieldset>
+    <fieldset>
+      <legend>Output</legend>
+      <div class="gaugeWrap">
+        <canvas id="gaugeV" width="240" height="240"></canvas>
+        <div class="gaugeTxt"><div class="big" id="gVval">0.00</div><div class="unit" style="color:#38bdf8">Voltage &#183; V</div><div class="sub" id="gVsub">Upper limit --<br>Set --</div></div>
+      </div>
+      <div class="gaugeWrap">
+        <canvas id="gaugeI" width="240" height="240"></canvas>
+        <div class="gaugeTxt"><div class="big" id="gIval">0.00</div><div class="unit" style="color:#4ade80">Current &#183; A</div><div class="sub" id="gIsub">Upper limit --<br>Set --</div></div>
+      </div>
+    </fieldset>
+  </div>
+  <div class="col">
+    <fieldset>
+      <legend>Setpoints</legend>
+      <div class="row"><label>Voltage</label><input type="number" id="inV" step="0.1" min="0" max="30" value="0"> <span>V</span></div>
+      <div class="row"><label>Current</label><input type="number" id="inA" step="0.05" min="0" max="5.1" value="0"> <span>A</span></div>
+      <div class="row">
+        <button id="btnApply" style="flex:2">Apply</button>
+        <button id="btnLock" style="flex:1" title="Lock: disable the Apply button so setpoints cannot be changed">Lock</button>
+      </div>
+      <div class="note" id="lblMax">device max now: --</div>
+    </fieldset>
+    <fieldset>
+      <legend>Presets - fixed</legend>
+      <div class="presets">
+        <button data-preset="0">3.3 V / 1 A</button>
+        <button data-preset="1">3.3 V / 5 A</button>
+        <button data-preset="2">5 V / 1 A</button>
+        <button data-preset="3">5 V / 3 A</button>
+      </div>
+      <div class="note">Fixed presets - cannot be edited or saved.</div>
+    </fieldset>
+    <fieldset>
+      <legend>Measurement</legend>
+      <div class="kv"><span>Output capacity</span><span id="mAh">0.000 Ah</span></div>
+      <div class="kv"><span>Output energy</span><span id="mWh">0.000 Wh</span></div>
+      <div class="kv"><span>Metering</span><span id="mMeter">--</span></div>
+    </fieldset>
+    <fieldset>
+      <legend>Brightness</legend>
+      <div class="row"><input type="range" id="rngBright" min="0" max="15" step="1" value="0"><input type="number" id="inBright" min="0" max="15" step="1" value="0" style="width:70px"></div>
+    </fieldset>
+  </div>
+  <div class="col">
+    <fieldset>
+      <legend>USB / Device</legend>
+      <div class="kv"><span>Product</span><span id="dProduct">--</span></div>
+      <div class="kv"><span>Firmware</span><span id="dFw">--</span></div>
+      <div class="kv"><span>Hardware</span><span id="dHw">--</span></div>
+      <div class="kv"><span>Port</span><span id="dPort">--</span></div>
+      <div class="kv"><span>Baud</span><span>115200</span></div>
+    </fieldset>
+    <fieldset>
+      <legend>&#9432; Basic information</legend>
+      <div class="boxes">
+        <div class="box"><div class="cap">Input Voltage</div><div class="val" id="bInV">--</div></div>
+        <div class="box"><div class="cap">Output</div><div class="val" id="bOutV">--</div></div>
+        <div class="box"><div class="cap">Output</div><div class="val" id="bOutA">--</div></div>
+        <div class="box"><div class="cap">Output Power</div><div class="val" id="bOutW">--</div></div>
+        <div class="box"><div class="cap">System</div><div class="val" id="bTemp">--</div></div>
+        <div class="box"><div class="cap">&nbsp;</div><div class="val">&#8212;</div></div>
+      </div>
+      <div class="lamps">
+        <div class="lamp"><div class="dot" id="lampNormal"></div>Normal</div>
+        <div class="lamp"><div class="dot" id="lampMode"></div><span id="modeName">Constant</span></div>
+        <button id="btnPower" class="off">
+          <svg width="40" height="40" viewBox="0 0 64 64"><path id="pwrArc" d="M20.5 24.4 A15 15 0 1 1 43.5 24.4" fill="none" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/><line id="pwrStem" x1="32" y1="11" x2="32" y2="33" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/></svg>
+          <span id="pwrTxt">Off</span>
+        </button>
+      </div>
+    </fieldset>
+  </div>
+</div>
+
+<div id="pageAdv" class="grid hidden" style="grid-template-columns:1fr 1fr;">
+  <fieldset>
+    <legend>Voltage scan</legend>
+    <div class="row"><label style="min-width:92px">Start (V)</label><input type="number" id="vsStart" step="0.1" value="3.3"></div>
+    <div class="row"><label style="min-width:92px">Stop (V)</label><input type="number" id="vsStop" step="0.1" value="5"></div>
+    <div class="row"><label style="min-width:92px">Step (V)</label><input type="number" id="vsStep" step="0.1" value="0.1"></div>
+    <div class="row"><label style="min-width:92px">Delay/step (s)</label><input type="number" id="vsDelay" step="1" value="5"></div>
+    <div class="row"><label style="min-width:92px">Fixed current (A)</label><input type="number" id="vsFixedI" step="0.05" value="0.1"></div>
+    <div class="row"><button id="btnVsRun" class="accent" style="flex:1">Run voltage scan</button><button id="btnVsStop" disabled style="flex:1">Stop</button></div>
+    <div class="note" id="vsStatus">Idle. Stop is the value where the scan ends (inclusive).</div>
+  </fieldset>
+  <fieldset>
+    <legend>Current scan</legend>
+    <div class="row"><label style="min-width:92px">Start (A)</label><input type="number" id="isStart" step="0.05" value="0.1"></div>
+    <div class="row"><label style="min-width:92px">Stop (A)</label><input type="number" id="isStop" step="0.05" value="0.5"></div>
+    <div class="row"><label style="min-width:92px">Step (A)</label><input type="number" id="isStep" step="0.05" value="0.1"></div>
+    <div class="row"><label style="min-width:92px">Delay/step (s)</label><input type="number" id="isDelay" step="1" value="5"></div>
+    <div class="row"><label style="min-width:92px">Fixed voltage (V)</label><input type="number" id="isFixedV" step="0.1" value="3.3"></div>
+    <div class="row"><button id="btnIsRun" class="accent" style="flex:1">Run current scan</button><button id="btnIsStop" disabled style="flex:1">Stop</button></div>
+    <div class="note" id="isStatus">Idle. Stop is the value where the scan ends (inclusive).</div>
+  </fieldset>
+  <fieldset style="grid-column:1 / span 2;">
+    <legend>Sequence</legend>
+    <table class="seq">
+      <thead><tr><th>#</th><th>Voltage (V)</th><th>Current (A)</th><th>Delay (s)</th><th>Status</th></tr></thead>
+      <tbody id="seqBody"></tbody>
+    </table>
+    <div class="row" style="margin-top:8px">
+      <button id="btnSeqAdd">Add row</button>
+      <label style="min-width:0">From row <input type="number" id="seqFrom" value="1" min="1" style="width:60px"></label>
+      <label style="min-width:0">To row <input type="number" id="seqTo" value="3" min="1" style="width:60px"></label>
+      <label style="min-width:0">Cycles <input type="number" id="seqCycles" value="1" min="1" style="width:60px"></label>
+    </div>
+    <div class="row">
+      <label style="min-width:0"><input type="radio" name="seqMode" value="auto" checked> Auto (run rows back to back)</label>
+      <label style="min-width:0"><input type="radio" name="seqMode" value="manual"> Manual (wait for Continue after each row)</label>
+    </div>
+    <div class="row">
+      <button id="btnSeqRun" class="accent" style="flex:2">Run sequence</button>
+      <button id="btnSeqPause" disabled style="flex:1">Pause</button>
+      <button id="btnSeqContinue" disabled style="flex:1">Continue</button>
+      <button id="btnSeqStop" disabled style="flex:1">Stop</button>
+    </div>
+    <div class="note" id="seqStatus">Idle. In Manual mode the sequence applies a row, then waits for Continue before the next row. Pause finishes the current row's delay, then holds.</div>
+  </fieldset>
+</div>
+
+<footer id="logLine">Ready.</footer>
+
+<div class="modalWrap" id="modalWrap">
+  <div class="modal">
+    <h3>&#9888; Apply preset?</h3>
+    <p id="modalText"></p>
+    <div class="btns"><button id="modalCancel">Cancel</button><button id="modalOk" class="accent">Apply preset</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* FNIRSI DPS-150 protocol - same wire format as fnirsi.py:
+   frame: F1 | Cmd | Reg | Len | Data | CS,  CS = (Reg + Len + sum(Data)) & 0xFF
+   responses start with F0. Floats are little-endian float32. */
+const CMD_READ = 0xA1, CMD_WRITE = 0xB1, CMD_SESSION = 0xC1, CMD_BAUD = 0xB0;
+const REG = { INPUT_V:0xC0, SET_V:0xC1, SET_A:0xC2, LIVE:0xC3, TEMP:0xC4,
+  BRIGHT:0xD6, VOLUME:0xD7, AH:0xD9, WH:0xDA, OUTPUT:0xDB, PROTECTION:0xDC, MODE:0xDD,
+  MODEL:0xDE, HW:0xDF, FW:0xE0, MAX_V:0xE2, MAX_A:0xE3, ALL:0xFF };
+const PROT_NAMES = ['OK','OVP','OCP','OPP','OTP','LVP','REP'];
+const FIXED_PRESETS = [[3.3,1.0],[3.3,5.0],[5.0,1.0],[5.0,3.0]];
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+function log(msg) { $('logLine').textContent = msg; }
+
+const S = { port:null, reader:null, writer:null, connected:false, buf:new Uint8Array(0),
+  waiters:new Map(), chain:Promise.resolve(),
+  st:{ input_v:0, set_v:0, set_a:0, out_v:0, out_a:0, out_w:0, temp_c:0, ah:0, wh:0,
+       metering:0, brightness:0, volume:0, output_on:false, protection:0, mode:1,
+       max_v:30.0, max_a:5.1 }, identity:{model:'--', hardware:'--', firmware:'--'},
+  locked:false, samples:[], chartPaused:false, runActive:false };
+
+function frame(cmd, reg, data) {
+  const out = new Uint8Array(5 + data.length);
+  out[0] = 0xF1; out[1] = cmd; out[2] = reg; out[3] = data.length;
+  out.set(data, 4);
+  let cs = (reg + data.length) & 0xFF;
+  for (const b of data) cs = (cs + b) & 0xFF;
+  out[4 + data.length] = cs;
+  return out;
+}
+function f32bytes(v) { const b = new Uint8Array(4); new DataView(b.buffer).setFloat32(0, v, true); return b; }
+function rdF32(dv, off) { return dv.getFloat32(off, true); }
+
+function enqueue(fn) { const p = S.chain.then(fn, fn); S.chain = p.then(()=>{}, ()=>{}); return p; }
+async function rawWrite(bytes) { await S.writer.write(bytes); await sleep(60); }
+function sendFrame(cmd, reg, data) { return enqueue(() => rawWrite(frame(cmd, reg, data))); }
+
+function readReg(reg, timeoutMs = 1600) {
+  return enqueue(async () => {
+    const resp = new Promise((resolve, reject) => {
+      S.waiters.set(reg, resolve);
+      setTimeout(() => { if (S.waiters.get(reg) === resolve) { S.waiters.delete(reg); reject(new Error('timeout reading reg 0x' + reg.toString(16))); } }, timeoutMs);
+    });
+    await rawWrite(frame(CMD_READ, reg, new Uint8Array([0])));
+    return resp;
+  });
+}
+async function readAscii(reg) {
+  const data = await readReg(reg);
+  return new TextDecoder().decode(data).replace(/\0+$/,'').trim();
+}
+async function readAll() {
+  const data = await readReg(REG.ALL, 2500);
+  if (data.length < 119) throw new Error('short dump: ' + data.length);
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const st = S.st;
+  st.input_v = rdF32(dv, 0); st.set_v = rdF32(dv, 4); st.set_a = rdF32(dv, 8);
+  st.out_v = rdF32(dv, 12); st.out_a = rdF32(dv, 16); st.out_w = rdF32(dv, 20);
+  st.temp_c = rdF32(dv, 24);
+  st.brightness = data[96]; st.volume = data[97]; st.metering = data[98];
+  st.ah = rdF32(dv, 99); st.wh = rdF32(dv, 103);
+  st.output_on = data[107] !== 0; st.protection = data[108]; st.mode = data[109];
+  st.max_v = rdF32(dv, 111); st.max_a = rdF32(dv, 115);
+  return data;
+}
+function onFrame(reg, data) {
+  const w = S.waiters.get(reg);
+  if (w) { S.waiters.delete(reg); w(data); return; }
+  const dv = data.length >= 4 ? new DataView(data.buffer, data.byteOffset, data.byteLength) : null;
+  if (reg === REG.INPUT_V && dv) S.st.input_v = rdF32(dv, 0);
+  else if (reg === REG.LIVE && data.length >= 12) { S.st.out_v = rdF32(dv,0); S.st.out_a = rdF32(dv,4); S.st.out_w = rdF32(dv,8); pushSample(); }
+  else if (reg === REG.TEMP && dv) S.st.temp_c = rdF32(dv, 0);
+  else if (reg === REG.MAX_V && dv) S.st.max_v = rdF32(dv, 0);
+  else if (reg === REG.MAX_A && dv) S.st.max_a = rdF32(dv, 0);
+  else return;
+  refreshLive();
+}
+function parseLoop(chunk) {
+  const buf = new Uint8Array(S.buf.length + chunk.length);
+  buf.set(S.buf); buf.set(chunk, S.buf.length);
+  let i = 0;
+  while (true) {
+    const start = buf.indexOf(0xF0, i);
+    if (start < 0 || buf.length - start < 5) { i = start < 0 ? buf.length : start; break; }
+    const len = buf[start + 3];
+    if (buf.length - start < 5 + len) { i = start; break; }
+    const data = buf.slice(start + 4, start + 4 + len);
+    onFrame(buf[start + 2], data);
+    i = start + 5 + len;
+  }
+  S.buf = buf.slice(i);
+}
+
+/* ---------- connection lifecycle ---------- */
+async function connect() {
+  if (!('serial' in navigator)) { log('Web Serial not available - open this page in Chrome or Edge.'); return; }
+  try {
+    S.port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x2e3c, usbProductId: 0x5740 }] });
+  } catch (e) { log('No device selected.'); return; }
+  await S.port.open({ baudRate: 115200 });
+  S.writer = S.port.writable.getWriter();
+  S.reader = S.port.readable.getReader();
+  S.connected = true;
+  (async () => { try { while (S.connected) { const { value, done } = await S.reader.read(); if (done) break; if (value) parseLoop(value); } } catch (e) { /* port closed */ } })();
+  await sleep(500);
+  await sendFrame(CMD_SESSION, 0x00, new Uint8Array([1]));
+  await sendFrame(CMD_BAUD, 0x00, new Uint8Array([5]));
+  await sleep(500);
+  try {
+    S.identity = { model: await readAscii(REG.MODEL), hardware: await readAscii(REG.HW), firmware: await readAscii(REG.FW) };
+    await readAll();
+  } catch (e) { log('Connected, but the device did not answer: ' + e.message); }
+  $('dPort').textContent = 'COM/USB (Web Serial)';
+  $('hdrStatus').textContent = '\u25CF Connected - ' + S.identity.model + ' \u00B7 FW ' + S.identity.firmware;
+  $('hdrStatus').classList.add('on');
+  $('btnConnect').textContent = 'Disconnect';
+  syncFromDevice();
+  log('Connected to ' + S.identity.model + ' (HW ' + S.identity.hardware + ', FW ' + S.identity.firmware + ') on USB serial.');
+}
+async function disconnect() {
+  try { await sendFrame(CMD_SESSION, 0x00, new Uint8Array([0])); } catch (e) {}
+  S.connected = false;
+  try { await S.reader.cancel(); } catch (e) {}
+  try { S.reader.releaseLock(); S.writer.releaseLock(); } catch (e) {}
+  try { await S.port.close(); } catch (e) {}
+  S.port = null;
+  $('hdrStatus').textContent = '\u25CF Disconnected';
+  $('hdrStatus').classList.remove('on');
+  $('btnConnect').textContent = 'Connect';
+  log('Disconnected. The supply keeps its output state - the web page never changes it on disconnect.');
+}
+$('btnConnect').addEventListener('click', () => { S.connected ? disconnect() : connect(); });
+if (!('serial' in navigator)) $('noSerial').style.display = 'block';
+navigator.serial && navigator.serial.addEventListener('disconnect', () => { if (S.connected) { S.connected = false; $('hdrStatus').textContent = '\u25CF Disconnected'; $('hdrStatus').classList.remove('on'); $('btnConnect').textContent = 'Connect'; log('Device unplugged.'); } });
+
+/* ---------- device operations ---------- */
+async function setVoltage(v) { await sendFrame(CMD_WRITE, REG.SET_V, f32bytes(clamp(v, 0, S.st.max_v))); }
+async function setCurrent(a) { await sendFrame(CMD_WRITE, REG.SET_A, f32bytes(clamp(a, 0, S.st.max_a))); }
+async function setOutput(on) { await sendFrame(CMD_WRITE, REG.OUTPUT, new Uint8Array([on ? 1 : 0])); S.st.output_on = on; refreshLive(); }
+async function applySetpoints(v, a, quiet) {
+  if (!S.connected) { log('Not connected.'); return false; }
+  await setVoltage(v); await setCurrent(a);
+  await readAll(); syncFromDevice();
+  if (!quiet) log('Setpoints applied: ' + S.st.set_v.toFixed(2) + ' V / ' + S.st.set_a.toFixed(2) + ' A (read back from the device).');
+  return true;
+}
+
+/* ---------- rendering ---------- */
+function drawGauge(cv, value, max, setp, color) {
+  const ctx = cv.getContext('2d'); const W = cv.width, C = W / 2, R = W / 2 - 16;
+  ctx.clearRect(0, 0, W, W);
+  const a0 = Math.PI * 0.75, sweep = Math.PI * 1.5;
+  ctx.lineCap = 'round'; ctx.lineWidth = 13;
+  ctx.strokeStyle = '#16303f'; ctx.beginPath(); ctx.arc(C, C, R, a0, a0 + sweep); ctx.stroke();
+  const frac = max > 0 ? clamp(value / max, 0, 1) : 0;
+  ctx.strokeStyle = color; ctx.beginPath(); ctx.arc(C, C, R, a0, a0 + sweep * frac); ctx.stroke();
+  if (max > 0) {
+    const sa = a0 + sweep * clamp(setp / max, 0, 1);
+    ctx.strokeStyle = '#facc15'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(C + (R - 11) * Math.cos(sa), C + (R - 11) * Math.sin(sa));
+    ctx.lineTo(C + (R + 11) * Math.cos(sa), C + (R + 11) * Math.sin(sa));
+    ctx.stroke();
+  }
+}
+function pushSample() {
+  if (S.chartPaused) return;
+  S.samples.push([S.st.out_v, S.st.out_a]);
+  if (S.samples.length > 300) S.samples.shift();
+  drawChart();
+}
+function drawChart() {
+  const cv = $('chart'), ctx = cv.getContext('2d'); const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = '#16303f'; ctx.fillStyle = '#7d94a3'; ctx.font = '10px sans-serif'; ctx.lineWidth = 1;
+  const maxV = Math.max(5, Math.ceil(S.st.max_v)), maxA = Math.max(1, Math.ceil(S.st.max_a));
+  for (let i = 0; i <= 4; i++) {
+    const y = 8 + (H - 24) * i / 4;
+    ctx.beginPath(); ctx.moveTo(34, y); ctx.lineTo(W - 34, y); ctx.stroke();
+    ctx.fillText((maxV * (1 - i / 4)).toFixed(0), 8, y + 3);
+    ctx.fillText((maxA * (1 - i / 4)).toFixed(1), W - 28, y + 3);
+  }
+  const plot = (idx, max, color) => {
+    if (S.samples.length < 2) return;
+    ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.beginPath();
+    S.samples.forEach((s, i) => {
+      const x = 34 + (W - 68) * i / 299;
+      const y = 8 + (H - 24) * (1 - clamp(s[idx] / max, 0, 1));
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  };
+  if ($('chkV').checked) plot(0, maxV, '#38bdf8');
+  if ($('chkI').checked) plot(1, maxA, '#4ade80');
+}
+function refreshLive() {
+  const st = S.st;
+  $('gVval').textContent = st.out_v.toFixed(2);
+  $('gIval').textContent = st.out_a.toFixed(2);
+  $('gVsub').innerHTML = 'Upper limit ' + st.max_v.toFixed(2) + ' V<br>Set ' + st.set_v.toFixed(2) + ' V';
+  $('gIsub').innerHTML = 'Upper limit ' + st.max_a.toFixed(2) + ' A<br>Set ' + st.set_a.toFixed(2) + ' A';
+  drawGauge($('gaugeV'), st.out_v, st.max_v, st.set_v, '#38bdf8');
+  drawGauge($('gaugeI'), st.out_a, st.max_a, st.set_a, '#4ade80');
+  $('bInV').textContent = st.input_v.toFixed(2) + 'V';
+  $('bOutV').textContent = st.out_v.toFixed(2) + 'V';
+  $('bOutA').textContent = st.out_a.toFixed(2) + 'A';
+  $('bOutW').textContent = st.out_w.toFixed(2) + 'W';
+  $('bTemp').textContent = st.temp_c.toFixed(1) + '\u00B0';
+  $('mAh').textContent = st.ah.toFixed(3) + ' Ah';
+  $('mWh').textContent = st.wh.toFixed(3) + ' Wh';
+  $('mMeter').textContent = st.metering ? 'On' : 'Off';
+  const protOk = st.protection === 0;
+  $('lampNormal').className = 'dot ' + (protOk ? 'g' : 'r');
+  $('lampNormal').parentElement.lastChild.textContent = protOk ? 'Normal' : (PROT_NAMES[st.protection] || 'Fault');
+  $('lampMode').className = 'dot b';
+  $('modeName').textContent = st.mode === 1 ? 'Constant' : 'Constant';
+  $('lblMax').textContent = 'device max now: ' + st.max_v.toFixed(2) + ' V / ' + st.max_a.toFixed(2) + ' A (set by the input supply)';
+  const col = st.output_on ? '#22c55e' : '#ef4444';
+  $('pwrArc').setAttribute('stroke', col); $('pwrStem').setAttribute('stroke', col);
+  $('pwrTxt').textContent = st.output_on ? 'On' : 'Off';
+  $('btnPower').className = st.output_on ? 'on' : 'off';
+}
+function syncFromDevice() {
+  $('inV').value = S.st.set_v; $('inA').value = S.st.set_a;
+  $('rngBright').value = S.st.brightness; $('inBright').value = S.st.brightness;
+  $('dProduct').textContent = S.identity.model; $('dFw').textContent = S.identity.firmware; $('dHw').textContent = S.identity.hardware;
+  refreshLive();
+}
+
+/* ---------- basic tab handlers ---------- */
+$('tabBasic').addEventListener('click', () => { $('tabBasic').classList.add('active'); $('tabAdv').classList.remove('active'); $('pageBasic').classList.remove('hidden'); $('pageAdv').classList.add('hidden'); });
+$('tabAdv').addEventListener('click', () => { $('tabAdv').classList.add('active'); $('tabBasic').classList.remove('active'); $('pageAdv').classList.remove('hidden'); $('pageBasic').classList.add('hidden'); });
+$('btnApply').addEventListener('click', async () => { await applySetpoints(parseFloat($('inV').value) || 0, parseFloat($('inA').value) || 0); });
+$('btnLock').addEventListener('click', () => {
+  S.locked = !S.locked;
+  $('btnApply').disabled = S.locked;
+  $('btnLock').textContent = S.locked ? 'Unlock' : 'Lock';
+  $('btnLock').classList.toggle('locked', S.locked);
+  log(S.locked ? 'Setpoints LOCKED - Apply is disabled. Click Unlock to make changes.' : 'Setpoints unlocked - Apply is enabled.');
+});
+let pendingPreset = null;
+document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => {
+  const [v, a] = FIXED_PRESETS[parseInt(btn.dataset.preset)];
+  pendingPreset = [v, a];
+  $('modalText').innerHTML = 'Apply preset <b>' + v + ' V / ' + a + ' A</b>?' + (S.st.output_on ? '<br><br>The output is <b>ON</b> - the new setpoints take effect immediately.' : '');
+  $('modalWrap').style.display = 'flex';
+  $('modalCancel').focus();
+}));
+$('modalCancel').addEventListener('click', () => { $('modalWrap').style.display = 'none'; log('Preset cancelled - setpoints unchanged.'); pendingPreset = null; });
+$('modalOk').addEventListener('click', async () => {
+  $('modalWrap').style.display = 'none';
+  if (pendingPreset) { await applySetpoints(pendingPreset[0], pendingPreset[1]); pendingPreset = null; }
+});
+$('btnPower').addEventListener('click', async () => { if (!S.connected) { log('Not connected.'); return; } await setOutput(!S.st.output_on); log('Output ' + (S.st.output_on ? 'ON' : 'OFF') + '.'); });
+let brightTimer = null;
+function brightChanged(src) {
+  const v = clamp(parseInt(src.value) || 0, 0, 15);
+  $('rngBright').value = v; $('inBright').value = v;
+  clearTimeout(brightTimer);
+  brightTimer = setTimeout(async () => { if (!S.connected) return; await sendFrame(CMD_WRITE, REG.BRIGHT, new Uint8Array([v])); await readAll(); $('rngBright').value = S.st.brightness; $('inBright').value = S.st.brightness; }, 250);
+}
+$('rngBright').addEventListener('input', e => brightChanged(e.target));
+$('inBright').addEventListener('change', e => brightChanged(e.target));
+$('btnPauseChart').addEventListener('click', () => { S.chartPaused = !S.chartPaused; $('btnPauseChart').textContent = S.chartPaused ? 'Resume' : 'Pause'; });
+$('btnClearChart').addEventListener('click', () => { S.samples = []; drawChart(); });
+$('chkV').addEventListener('change', drawChart);
+$('chkI').addEventListener('change', drawChart);
+drawChart(); refreshLive();
+
+/* ---------- advanced: scans + sequence ---------- */
+const R = { stop:false, pause:false, resume:null };
+function runLock(on) {
+  S.runActive = on;
+  ['btnApply','btnLock','btnPower','btnVsRun','btnIsRun','btnSeqRun'].forEach(id => { const el = $(id); if (el) el.disabled = on || (id === 'btnApply' && S.locked); });
+}
+async function stoppableSleep(sec) {
+  const end = Date.now() + sec * 1000;
+  while (Date.now() < end) { if (R.stop) return false; await sleep(Math.min(200, end - Date.now())); }
+  return !R.stop;
+}
+function waitContinue() {
+  return new Promise(res => { R.resume = res; $('btnSeqContinue').disabled = false; });
+}
+$('btnSeqContinue').addEventListener('click', () => { $('btnSeqContinue').disabled = true; if (R.resume) { const r = R.resume; R.resume = null; r(); } });
+async function restoreSnapshot(snap, what) {
+  await setVoltage(snap[0]); await setCurrent(snap[1]); await setOutput(snap[2]);
+  await readAll(); syncFromDevice();
+  log(what + ' - setpoints and output restored to ' + snap[0].toFixed(2) + ' V / ' + snap[1].toFixed(2) + ' A, output ' + (snap[2] ? 'ON' : 'OFF') + '.');
+}
+async function runScan(kind) {
+  if (!S.connected) { log('Not connected.'); return; }
+  const isV = kind === 'v';
+  const g = id => parseFloat($(id).value) || 0;
+  const start = g(isV ? 'vsStart' : 'isStart'), stop = g(isV ? 'vsStop' : 'isStop'),
+        step = Math.abs(g(isV ? 'vsStep' : 'isStep')) || 0.1, delay = g(isV ? 'vsDelay' : 'isDelay'),
+        fixed = g(isV ? 'vsFixedI' : 'isFixedV');
+  const statusEl = $(isV ? 'vsStatus' : 'isStatus');
+  const lim = isV ? S.st.max_v : S.st.max_a;
+  if (start < 0 || start > lim || stop < 0 || stop > lim) { statusEl.textContent = 'Start/stop must be within 0..' + lim.toFixed(2) + '.'; return; }
+  if (start === stop) { statusEl.textContent = 'Start and stop are equal - nothing to scan.'; return; }
+  const snap = [S.st.set_v, S.st.set_a, S.st.output_on];
+  R.stop = false; runLock(true);
+  $(isV ? 'btnVsStop' : 'btnIsStop').disabled = false;
+  const dir = stop > start ? 1 : -1;
+  const n = Math.floor(Math.abs(stop - start) / step + 1e-9) + 1;
+  const unit = isV ? ' V' : ' A';
+  statusEl.textContent = 'Running: ' + n + ' steps.';
+  try {
+    for (let i = 0; i < n; i++) {
+      if (R.stop) break;
+      const val = Math.round((start + dir * step * i) * 1000) / 1000;
+      if (isV) { await setCurrent(fixed); await setVoltage(val); } else { await setVoltage(fixed); await setCurrent(val); }
+      S.st.set_v = isV ? val : fixed; S.st.set_a = isV ? fixed : val; refreshLive();
+      statusEl.textContent = 'Step ' + (i + 1) + '/' + n + ': ' + val.toFixed(2) + unit + ' (holding ' + delay + ' s)';
+      if (i < n - 1 && !await stoppableSleep(delay)) break;
+    }
+  } finally {
+    $(isV ? 'btnVsStop' : 'btnIsStop').disabled = true; runLock(false);
+    await restoreSnapshot(snap, R.stop ? (isV ? 'Voltage' : 'Current') + ' scan stopped' : (isV ? 'Voltage' : 'Current') + ' scan finished');
+    statusEl.textContent = 'Idle.';
+  }
+}
+$('btnVsRun').addEventListener('click', () => runScan('v'));
+$('btnIsRun').addEventListener('click', () => runScan('i'));
+$('btnVsStop').addEventListener('click', () => { R.stop = true; });
+$('btnIsStop').addEventListener('click', () => { R.stop = true; });
+
+function addSeqRow(v, a, d) {
+  const tb = $('seqBody'); const n = tb.rows.length + 1;
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td>' + n + '</td><td><input type="number" step="0.1" value="' + v + '"></td><td><input type="number" step="0.05" value="' + a + '"></td><td><input type="number" step="1" value="' + d + '"></td><td class="st">Pending</td>';
+  tb.appendChild(tr);
+}
+addSeqRow(3.3, 1.0, 5); addSeqRow(5.0, 1.0, 5); addSeqRow(12.0, 0.5, 5);
+$('btnSeqAdd').addEventListener('click', () => addSeqRow(3.3, 1.0, 5));
+function seqRows() {
+  return [...$('seqBody').rows].map(tr => { const inp = tr.querySelectorAll('input'); return { tr, st: tr.querySelector('.st'), v: parseFloat(inp[0].value) || 0, a: parseFloat(inp[1].value) || 0, d: parseFloat(inp[2].value) || 0 }; });
+}
+$('btnSeqPause').addEventListener('click', () => { R.pause = true; $('seqStatus').textContent = 'Pause queued - it takes effect when the current row finishes.'; });
+$('btnSeqStop').addEventListener('click', () => { R.stop = true; if (R.resume) { const r = R.resume; R.resume = null; r(); } });
+$('btnSeqRun').addEventListener('click', async () => {
+  if (!S.connected) { log('Not connected.'); return; }
+  const rows = seqRows();
+  const from = clamp(parseInt($('seqFrom').value) || 1, 1, rows.length);
+  const to = clamp(parseInt($('seqTo').value) || rows.length, from, rows.length);
+  const cycles = Math.max(1, parseInt($('seqCycles').value) || 1);
+  const manual = document.querySelector('input[name=seqMode]:checked').value === 'manual';
+  rows.forEach(r => { r.st.textContent = 'Pending'; r.tr.classList.remove('running'); });
+  const snap = [S.st.set_v, S.st.set_a, S.st.output_on];
+  R.stop = false; R.pause = false; runLock(true);
+  $('btnSeqPause').disabled = false; $('btnSeqStop').disabled = false; $('btnSeqContinue').disabled = true;
+  try {
+    outer:
+    for (let c = 1; c <= cycles; c++) {
+      for (let i = from - 1; i < to; i++) {
+        if (R.stop) break outer;
+        const r = rows[i];
+        rows.forEach(x => x.tr.classList.remove('running')); r.tr.classList.add('running'); r.st.textContent = 'Running';
+        $('seqStatus').textContent = 'Cycle ' + c + '/' + cycles + ' - row ' + (i + 1) + ': ' + r.v.toFixed(2) + ' V / ' + r.a.toFixed(2) + ' A for ' + r.d + ' s.';
+        await setVoltage(r.v); await setCurrent(r.a);
+        S.st.set_v = r.v; S.st.set_a = r.a; refreshLive();
+        if (!await stoppableSleep(r.d)) { r.st.textContent = 'Stopped'; break outer; }
+        r.st.textContent = 'Done';
+        const isLast = c === cycles && i === to - 1;
+        if (!isLast && (manual || R.pause)) {
+          if (R.pause) { R.pause = false; $('seqStatus').textContent = 'Paused after row ' + (i + 1) + '. Click Continue to resume.'; }
+          else $('seqStatus').textContent = 'Row ' + (i + 1) + ' applied (Manual mode). Click Continue for the next row.';
+          const w = waitContinue();
+          while (!R.stop && $('btnSeqContinue').disabled === false && R.resume) { if (await Promise.race([w.then(() => 'go'), sleep(250).then(() => 'tick')]) === 'go') break; }
+          if (R.stop) break outer;
+        }
+      }
+    }
+  } finally {
+    $('btnSeqPause').disabled = true; $('btnSeqStop').disabled = true; $('btnSeqContinue').disabled = true; runLock(false);
+    await restoreSnapshot(snap, R.stop ? 'Sequence stopped' : 'Sequence finished');
+    $('seqStatus').textContent = 'Idle.';
+  }
+});
+</script>
+</body>
+</html>

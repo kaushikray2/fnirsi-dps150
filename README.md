@@ -5,6 +5,18 @@ virtual COM port. Protocol reverse-engineered from open-source
 implementations and **verified end-to-end on a physical unit
 (model `DPS-150`, HW V1.0, FW V1.2)**. Works on Linux and Windows.
 
+## Web interface (no install)
+
+`fnirsi_web.html` is a single self-contained page with the same interface
+as the Python GUI - Basic and Advanced tabs, trend chart, gauges, fixed
+presets, setpoint lock, voltage/current scans and sequences. It talks to
+the supply directly from the browser over the **Web Serial API**, so there
+is nothing to install: open the file in **Chrome or Edge**, click
+**Connect**, and pick the supply (it appears as the AT32 USB serial
+device). Firefox and Safari cannot be used - they do not support Web
+Serial. Closing the page, like closing the GUI, leaves the supply's
+output state untouched.
+
 ## ⚠ Warning — use at your own risk
 
 This software drives a real power supply that can deliver up to
