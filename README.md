@@ -63,13 +63,4 @@ with FnirsiDPS150() as psu:            # auto-detects the port
   protection limits 0xD1-0xD5, brightness 0xD6, Ah 0xD9, Wh 0xDA,
   protection 0xDC, mode 0xDD, model 0xDE, firmware 0xE0, dump 0xFF).
 
-## Bench behaviour worth knowing
-- **Max output voltage follows the input**: fed 11.96 V, the unit reported a max
-  of 11.76 V (nameplate 30 V needs a higher-voltage PD input). The library clamps
-  setpoints to the live device-reported limits.
-- **Soft-start ramp ~2.2 V/s** up and down (3.3 V reached ~1.5 s after ON; the
-  October "wrong voltage" readings were this ramp plus the temp register 0xC4
-  sitting next to the live register 0xC3).
-- Keep >= 50 ms between commands. DISCONNECT gets no reply.
-- The GUI disconnecting (or closing) leaves the output state untouched on the
-  device — cutting power is always a deliberate button press.
+
