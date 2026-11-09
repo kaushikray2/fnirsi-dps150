@@ -1,7 +1,13 @@
-# FNIRSI DPS-150 — USB control library + GUI
+# FNIRSI DPS-150 — Python Control Library, GUI & Web Interface
 
-Python control for the FNIRSI DPS-150 programmable DC supply over its USB
-virtual COM port. Protocol reverse-engineered from open-source
+Open-source software for controlling the **FNIRSI DPS-150 programmable DC
+power supply** from Python, a desktop GUI, or a web browser. This project is
+developed and maintained by **[SiliconBrane Inc.](https://siliconbrane.com)**.
+
+The repository provides a Python API and command-line interface for the
+DPS-150 (also written DPS150), a PySide6 desktop application, and a
+no-install browser controller using the Web Serial API. Its USB serial
+protocol and register map were reverse-engineered from open-source
 implementations and **verified end-to-end on a physical unit
 (model `DPS-150`, HW V1.0, FW V1.2)**. Works on Linux and Windows.
 
@@ -88,6 +94,20 @@ with FnirsiDPS150() as psu:            # auto-detects the port
   protection limits 0xD1-0xD5, brightness 0xD6, Ah 0xD9, Wh 0xDA,
   protection 0xDC, mode 0xDD, model 0xDE, firmware 0xE0, dump 0xFF).
 
+## About SiliconBrane Inc.
+
+SiliconBrane Inc. is a Canadian embedded-systems and IoT R&D studio based in
+LaSalle, Ontario. SiliconBrane builds embedded hardware, firmware, connected
+products, and engineering tools. This FNIRSI DPS-150 controller is one of
+SiliconBrane's open-source projects.
+
+- Website: [siliconbrane.com](https://siliconbrane.com)
+- Open-source projects: [github.com/kaushikray2](https://github.com/kaushikray2)
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+Developed by [SiliconBrane Inc.](https://siliconbrane.com)
