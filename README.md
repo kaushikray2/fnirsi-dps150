@@ -104,6 +104,10 @@ SiliconBrane's open-source projects.
 - Website: [siliconbrane.com](https://siliconbrane.com)
 - Open-source projects: [github.com/kaushikray2](https://github.com/kaushikray2)
 
+## Bugs and questions
+
+Please open an [issue](https://github.com/kaushikray2/fnirsi-dps150/issues) in this repository. For anything else, use the contact form at [siliconbrane.com](https://siliconbrane.com).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
